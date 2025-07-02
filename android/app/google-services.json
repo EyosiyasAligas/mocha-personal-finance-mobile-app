@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "763065859197",
+    "project_id": "mocha-personal-finance",
+    "storage_bucket": "mocha-personal-finance.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:763065859197:android:ddebb67bc2c8171b8b8514",
+        "android_client_info": {
+          "package_name": "com.mocha.mocha_personal_finance"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7oTIC-Z1e4D6ePfs_-C-fLyZ6jfx6-T4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
