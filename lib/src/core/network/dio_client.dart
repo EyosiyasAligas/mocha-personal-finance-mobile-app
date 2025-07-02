@@ -1,0 +1,169 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
+import '../constants/local_storage_constants.dart';
+import '../local_storage/local_storage_service.dart';
+import '../utils/helper.dart';
+
+class DioClient {
+  final Dio dio;
+
+  bool _isRefreshing = false;
+  final LocalStorageService _storage;
+
+  DioClient(this._storage, this.dio) {
+    initializeDio();
+  }
+
+  /// Initialize the Dio
+  Future<void> initializeDio() async {
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final accessToken = await _storage.getToken(
+            tokenKey: LocalStorageConstants.accessToken,
+          );
+          if (accessToken != null) {
+            options.headers['Authorization'] = 'Bearer $accessToken';
+          }
+          return handler.next(options);
+        },
+        onResponse: (response, handler) {
+          return handler.next(response);
+        },
+        onError: (DioException error, handler) async {
+          if (error.response?.statusCode == 401) {
+            if (_storage.isTokenExpired() && !_isRefreshing) {
+              _isRefreshing = true;
+              try {
+                final newToken = await _refreshTokenRequest();
+
+                if (newToken != null) {
+                  final newResponse = await _retryRequest(error.requestOptions);
+                  return handler.resolve(newResponse);
+                } else {
+                  /// If the token refresh fails, you can handle it here.
+                  // sl<AuthBloc>().add(const SignOutEvent());
+                  return handler.reject(
+                    DioException(
+                      requestOptions: error.requestOptions,
+                      response: error.response,
+                      error: error.error,
+                      message: 'Session expired. Please log in again.',
+                    ),
+                  );
+                }
+              } on DioException catch (error) {
+                if (kDebugMode) {
+                  print('Token refresh error: ${error.response}');
+                }
+                return handler.reject(error);
+              } catch (e) {
+                if (kDebugMode) {
+                  print('Token refresh failed: $e');
+                }
+                return handler.reject(error);
+              } finally {
+                _isRefreshing = false;
+              }
+            }
+          }
+
+          return handler.reject(
+            DioException(
+              requestOptions: error.requestOptions,
+              response: error.response,
+              error: error.error,
+              message:
+                  Helper.convertRemoteErrorMessage(error) ??
+                  'Some thing went wrong. Please try again.',
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Refresh the access token
+  Future<String?> _refreshTokenRequest() async {
+    try {
+      final refreshToken = await _storage.getToken(
+        tokenKey: LocalStorageConstants.refreshToken,
+      );
+
+      final response = await Dio().post(
+        'ApiConstants.refreshToken',
+        data: {'refresh_token': '$refreshToken'},
+      );
+      if (response.data != null && response.data['access_token'] != null) {
+        final newAccessToken = response.data['access_token'];
+        final newRefresh = response.data['refresh_token'];
+        Future.wait([
+          _storage.saveToken(
+            tokenKey: LocalStorageConstants.accessToken,
+            token: newAccessToken,
+          ),
+          _storage.saveToken(
+            tokenKey: LocalStorageConstants.refreshToken,
+            token: newRefresh,
+          ),
+        ]);
+        dio.options.headers['Authorization'] = 'Bearer $newAccessToken';
+      }
+
+      return response.data['access_token'];
+    } on DioException catch (error) {
+      if (kDebugMode) {
+        print(
+          'Token refresh error: ${error.response}, ${error.response?.statusCode}',
+        );
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Token refresh error: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Retry the original request after refreshing the token
+  Future<Response> _retryRequest(RequestOptions requestOptions) async {
+    dynamic data = requestOptions.data;
+
+    if (data is FormData) {
+      data = await cloneFormData(data);
+    }
+
+    final options = Options(
+      method: requestOptions.method,
+      headers: requestOptions.headers,
+    );
+
+    return await dio.request(
+      requestOptions.path,
+      data: data,
+      queryParameters: requestOptions.queryParameters,
+      options: options,
+    );
+  }
+
+  /// Clone the FormData object
+  Future<FormData> cloneFormData(FormData original) async {
+    final Map<String, dynamic> newMap = {};
+
+    for (var entry in original.fields) {
+      newMap[entry.key] = entry.value;
+    }
+
+    for (var fileEntry in original.files) {
+      final MultipartFile file = fileEntry.value.clone();
+
+      if (file.filename != null) {
+        newMap[fileEntry.key] = file;
+      }
+    }
+
+    return FormData.fromMap(newMap);
+  }
+}

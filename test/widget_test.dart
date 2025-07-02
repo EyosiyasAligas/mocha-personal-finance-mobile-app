@@ -7,9 +7,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocha_personal_finance/core/route/app_route.dart';
 
 import 'package:mocha_personal_finance/main.dart';
+import 'package:mocha_personal_finance/src/core/route/app_route.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {

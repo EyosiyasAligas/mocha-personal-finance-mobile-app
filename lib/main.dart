@@ -2,12 +2,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'config/firebase_remote_config.dart';
-import 'core/route/app_route.dart';
-import 'core/service_locator/service_locator.dart';
-import 'core/theme/app_colors.dart';
-import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
+import 'src/config/firebase_remote_config.dart';
+import 'src/core/route/app_route.dart';
+import 'src/core/service_locator/service_locator.dart';
+import 'src/core/theme/app_colors.dart';
+import 'src/core/theme/app_theme.dart';
+import 'src/core/utils/helper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +62,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp.router(
           title: 'Mocha Personal Finance',
           debugShowCheckedModeBanner: false,
+          scaffoldMessengerKey: Helper.scaffoldMessengerKey,
           theme: AppTheme.lightTheme.copyWith(colorScheme: lightScheme),
           darkTheme: AppTheme.darkTheme.copyWith(colorScheme: darkScheme),
           // theme: AppTheme.lightTheme
